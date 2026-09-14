@@ -632,7 +632,8 @@ PyResult BeyonceBound::CmdStop(PyCallArgs &call) {
         codelog(CLIENT__ERROR, "%s: Client has no destiny manager!", call.client->GetName());
         return PyStatic.NewNone();
     }
-    if (!pDestiny->IsMoving())
+    // Check if AutoPilot is on or not to decide stop.
+    if (!pDestiny->IsMoving() && !call.client->IsAutoPilot())
         return PyStatic.NewNone();
     if (pDestiny->IsWarping()) {
         call.client->SendNotifyMsg( "You can't do this while warping");

@@ -157,7 +157,11 @@ void DestinyManager::ProcessState() {
                 MoveObject();
                 return;
             }
-            Stop();
+
+            // Already stationary: reset movement without cancelling autopilot
+            // or sending a CmdStop to the client
+            Halt();
+            //Stop();
         } break;
         case Ball::Mode::GOTO: {
             MoveObject();
