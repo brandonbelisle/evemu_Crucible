@@ -738,11 +738,17 @@ PyResult BeyonceBound::CmdStargateJump(PyCallArgs &call, PyInt* fromStargateID, 
     /** @todo  check distance from ship to gate */
     call.client->StargateJump(fromStargateID->value(), toStargateID->value());
 
-    /* return error msg from this call, if applicable, else nodeid and timestamp */
-    // returns nodeID and timestamp
-    // HACK: WE'RE RETURNING BACK THE SAME BOUND SERVICE, IN REALITY A NEW BOUND INSTANCE SHOULD BE CREATED FOR THIS SHIP IN SPECIFIC
-    //       INSTEAD OF REUSING THIS ONE, THIS WOULD HELP KEEP INFORMATION IN/OUT OF MEMORY BASED ON THE BOUND SERVICES
-    return this->GetOID();
+    // 2026-09-14 16:03 -04:00 | theocheesecake: Test the historical
+    // stargate response from before service refactor 7c8bbc93: preserve the
+    // bound-service string but generate a fresh timestamp for each jump.
+    // GetOID() otherwise reuses the value created when the service was bound.
+    // Only modify the returned clone; leave the registered service OID intact.
+    // This is a controlled regression test, not a confirmed autopilot fix.
+    PyTuple* response = this->GetOID();
+    response->SetItem(1, new PyLong(GetFileTimeNow()));
+    sLog.Warning("APDebug", "%s: stargate reply uses fresh timestamp",
+        call.client->GetName());
+    return response;
 }
 
 PyResult BeyonceBound::CmdAbandonLoot(PyCallArgs &call, PyList* wreckIDs) {
