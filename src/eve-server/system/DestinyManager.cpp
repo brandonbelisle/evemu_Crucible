@@ -3223,24 +3223,35 @@ void DestinyManager::SendSetState() const {
         );
     }
 
-    // if the player is not warping, tell the client they're not warping.
-    // As of 2024-10-03, this doesn't always work and there are still issues
-    // with the client sometimes not starting a warp sequence.
-    std::vector<PyTuple*> updates;
-    OnSpecialFX10 sfx;
-    sfx.guid = "effects.Warping";
-    sfx.entityID = mySE->GetID();
-    sfx.isOffensive = false;
-    sfx.start = false;
-    sfx.active = false;
-    if (m_ballMode == Destiny::Ball::Mode::WARP) {
-        sfx.start = true; // TODO: verify if this is necessary
-        sfx.active = true;
-    }
+    // 2026-09-14 15:51 -04:00 | theocheesecake: During a non-warping
+    // stargate arrival, use the full SetState snapshot without synthesizing
+    // a warp-stop effect. The effect is queued, while SetState is immediate;
+    // traces show the effect arriving after SetState, followed by CmdStop.
+    // This targets that suspected cancellation trigger. Preserve the existing
+    // warp-effect synchronization for other SetState calls and actual warps.
+    if (!mySE->GetPilot()->IsGateJump() || m_ballMode == Destiny::Ball::Mode::WARP) {
+        // if the player is not warping, tell the client they're not warping.
+        // As of 2024-10-03, this doesn't always work and there are still issues
+        // with the client sometimes not starting a warp sequence.
+        std::vector<PyTuple*> updates;
+        OnSpecialFX10 sfx;
+        sfx.guid = "effects.Warping";
+        sfx.entityID = mySE->GetID();
+        sfx.isOffensive = false;
+        sfx.start = false;
+        sfx.active = false;
+        if (m_ballMode == Destiny::Ball::Mode::WARP) {
+            sfx.start = true; // TODO: verify if this is necessary
+            sfx.active = true;
+        }
 
-    updates.push_back(sfx.Encode());
-    SendDestinyUpdate(updates);
-    updates.clear();
+        updates.push_back(sfx.Encode());
+        SendDestinyUpdate(updates);
+        updates.clear();
+    } else {
+        sLog.Warning("APDebug", "%s: gate arrival - omitted synthetic warp-stop effect",
+            mySE->GetPilot()->GetName());
+    }
 
     SetState ss;
 
