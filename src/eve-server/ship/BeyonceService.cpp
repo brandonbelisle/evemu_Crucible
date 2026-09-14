@@ -607,6 +607,11 @@ PyResult BeyonceBound::CmdWarpToStuffAutopilot(PyCallArgs &call, PyInt* destID) 
         return PyStatic.NewNone();
     }
 
+    // 2026-09-14 16:17 -04:00 | theocheesecake: Compare accepted autopilot commands with arrival, including manual reactivation.
+    sLog.Warning("APDebug", "%s: ACCEPT AP warp, system=%u target=%u mode=%u cloak=%d AP=%d",
+        call.client->GetName(), call.client->GetSystemID(), static_cast<unsigned int>(destID->value()),
+        static_cast<unsigned int>(pDestiny->GetState()), static_cast<int>(pDestiny->IsCloaked()),
+        static_cast<int>(call.client->IsAutoPilot()));
     call.client->SetInvul(false);
     call.client->SetUndock(false);
     // AP shit here.....

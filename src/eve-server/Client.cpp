@@ -2237,13 +2237,12 @@ void Client::QueueDestinyUpdate(PyTuple **update, bool DoPackage /*false*/, bool
 
 void Client::_SendQueuedUpdates() {
     // 2026-09-14 15:37 -04:00 | theocheesecake: Identify when queued updates actually leave the server.
-    if (IsAutoPilot() && (!m_destinyUpdateQueue->empty() || !m_destinyEventQueue->empty())) {
+    // 2026-09-14 16:17 -04:00 | theocheesecake: Omit event-only diagnostic flushes such as capacitor recharge.
+    if (IsAutoPilot() && !m_destinyUpdateQueue->empty()) {
         sLog.Warning("APDebug", "%s: FLUSH destiny, system=%u, updates=%u, events=%u",
             GetName(), GetSystemID(),
             static_cast<unsigned int>(m_destinyUpdateQueue->size()),
             static_cast<unsigned int>(m_destinyEventQueue->size()));
-        if (!m_destinyEventQueue->empty())
-            m_destinyEventQueue->Dump(AUTOPILOT__ERROR, "APDebug events: ");
     }
     if (!m_destinyUpdateQueue->empty()) {
         if (m_destinyEventQueue->empty()) {
