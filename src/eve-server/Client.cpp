@@ -2121,6 +2121,12 @@ void Client::SendSessionChange()
     scn.changes = new PyDict();
 
     pSession->EncodeChanges(scn.changes);
+    // 2026-09-14 15:37 -04:00 | theocheesecake: Temporary trace of session changes while server autopilot is enabled.
+    if (IsAutoPilot() && !scn.changes->empty()) {
+        sLog.Warning("APDebug", "%s: SEND session change, system=%u, ship=%u",
+            GetName(), GetSystemID(), GetShipID());
+        scn.changes->Dump(AUTOPILOT__ERROR, "APDebug session: ");
+    }
     if (scn.changes->empty())
         return;
 
@@ -2185,6 +2191,16 @@ void Client::QueueDestinyUpdate(PyTuple **update, bool DoPackage /*false*/, bool
         return;
     if (sDataMgr.IsStation(m_locationID))
         return;
+    // 2026-09-14 15:37 -04:00 | theocheesecake: Trace queued versus immediate movement updates without dumping the large SetState buffer.
+    if (IsAutoPilot()) {
+        sLog.Warning("APDebug", "%s: %s destiny, SetState=%d, system=%u, stamp=%u, pending=%u",
+            GetName(), DoPackage ? "SEND immediate" : "QUEUE",
+            static_cast<int>(IsSetState), GetSystemID(),
+            static_cast<unsigned int>(sEntityList.GetStamp()),
+            static_cast<unsigned int>(m_destinyUpdateQueue->size()));
+        if (!IsSetState)
+            (*update)->Dump(AUTOPILOT__ERROR, "APDebug destiny: ");
+    }
     DoDestinyAction act;
         act.stamp = sEntityList.GetStamp();
     if (DoPackage/* or m_packaged*/) {
@@ -2220,6 +2236,15 @@ void Client::QueueDestinyUpdate(PyTuple **update, bool DoPackage /*false*/, bool
 }
 
 void Client::_SendQueuedUpdates() {
+    // 2026-09-14 15:37 -04:00 | theocheesecake: Identify when queued updates actually leave the server.
+    if (IsAutoPilot() && (!m_destinyUpdateQueue->empty() || !m_destinyEventQueue->empty())) {
+        sLog.Warning("APDebug", "%s: FLUSH destiny, system=%u, updates=%u, events=%u",
+            GetName(), GetSystemID(),
+            static_cast<unsigned int>(m_destinyUpdateQueue->size()),
+            static_cast<unsigned int>(m_destinyEventQueue->size()));
+        if (!m_destinyEventQueue->empty())
+            m_destinyEventQueue->Dump(AUTOPILOT__ERROR, "APDebug events: ");
+    }
     if (!m_destinyUpdateQueue->empty()) {
         if (m_destinyEventQueue->empty()) {
             DoDestinyUpdateMain_2 dum;
