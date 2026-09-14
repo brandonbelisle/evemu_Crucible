@@ -100,7 +100,7 @@ bool SystemEntity::ApplyDamage(Damage &d) {
     double profileStartTime(GetTimeUSeconds());
 
     // Cancel autopilot when another entity delivers a damaging attack.
-    if (HasAutopilot()
+    if (HasPilot()
         && GetPilot()->IsAutoPilot()
         && d.srcSE != nullptr
         && d.srcSE != this
