@@ -1792,24 +1792,39 @@ void DestinyManager::WarpStop(double currentShipSpeed) {
         _log(AUTOPILOT__MESSAGE, "Destiny::WarpStop(): %s(%u) - Warp complete.", mySE->GetName(), mySE->GetID());
         mySE->GetPilot()->SetLoginWarpComplete();
     }
-    m_targetPoint += (m_warpState->warp_vector *10000);
-    // SetSpeedFraction() checks for m_state = Warp and warpstate != null to set decel variables correctly with warp decel.
-    //   have to call this BEFORE deleting or reseting m_state or WarpState.
-    SetSpeedFraction(0.0f);
+    // 2026-09-14 15:57 -04:00 | theocheesecake: Preserve the warp-exit
+    // direction and actual speed when handing movement back to MoveObject().
+    // The previous SetSpeedFraction()/Halt() sequence prepared deceleration,
+    // then erased it immediately while the client was still coasting.
+    m_shipHeading = m_warpState->warp_vector;
+    m_targetHeading = m_shipHeading;
+    m_targetPoint = m_position + (m_shipHeading * 10000.0);
+    m_velocity = m_shipHeading * currentShipSpeed;
+    m_prevSpeed = currentShipSpeed;
+    m_prevSpeedFraction = (m_maxShipSpeed > 0.0f)
+        ? currentShipSpeed / m_maxShipSpeed : 0.0f;
+    m_activeSpeedFraction = m_prevSpeedFraction;
+    m_userSpeedFraction = 0.0f;
+    m_maxSpeed = 0.0f;
+    m_accel = false;
+    m_decel = true;
+    m_turning = false;
+    m_changeDelay = false;
+    m_timeFraction = 0.0f;
+    m_moveTime = GetTimeMSeconds();
+    m_shipAccelTime = m_shipMaxAccelTime * m_prevSpeedFraction;
+    m_stateStamp = sEntityList.GetStamp();
     m_stop = true;
+
+    // 2026-09-14 15:57 -04:00 | theocheesecake: GOTO runs the existing
+    // deceleration integrator. STOP would treat timeFraction=0 as stationary
+    // and halt on the next tick. MoveObject() calls Halt() once coasting ends.
+    m_ballMode = Destiny::Ball::Mode::GOTO;
     SafeDelete(m_warpState);
     m_targBubble = nullptr;
     if ((mySE->IsNPCSE()) and (mySE->GetNPCSE()->GetAIMgr() != nullptr)) {
         mySE->GetNPCSE()->GetAIMgr()->WarpOutComplete();
     }
-
-    // TODO: when exiting warp, and attempting to warp again shortly after, the
-    // ball mode reaches a weird state where it goes from Warp to a regular
-    // move. Halting the ship after warp completes seems to fix this, but it's
-    // not a good fix, because the client shows that the ship moves a few meters
-    // forward while decelerating - meaning that the client and server are
-    // briefly out of sync because the server thinks the ship is halted.
-    Halt();
 }
 
 //called whenever an entity is going away and can no longer be used as a target
