@@ -822,8 +822,15 @@ void Client::MoveToLocation(uint32 locationID, const GPoint& pt) {
 
         SetDestiny(pt);
 
-        if (IsJump() and !m_autoPilot)
-            pShipSE->DestinyMgr()->Stop();
+        // 2026-09-14 16:50 -04:00 | theocheesecake: Reset movement on
+        // jump arrival without sending CmdStop or cancelling autopilot.
+        // m_autoPilot is inferred from autopilot warp requests; it does not
+        // reliably reflect the client's toggle when already near a gate.
+        if (IsJump()) {
+            pShipSE->DestinyMgr()->Halt();
+            sLog.Warning("APDebug", "%s: jump arrival used Halt without CmdStop, serverAP=%d",
+                GetName(), static_cast<int>(m_autoPilot));
+        }
     }
 
     if (!m_login)
