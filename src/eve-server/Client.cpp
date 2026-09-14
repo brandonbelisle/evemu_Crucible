@@ -656,6 +656,9 @@ void Client::SetAutoPilot(bool set/*false*/)
     if (m_autoPilot == set)
         return;
 
+    // 2026-09-14 15:25 -04:00 | theocheesecake: Temporary diagnostic for autopilot state changes.
+    sLog.Warning("APDebug", "%s: autopilot %s -> %s",
+        GetName(), m_autoPilot ? "ON" : "OFF", set ? "ON" : "OFF");
     m_autoPilot = set;
     _log(AUTOPILOT__MESSAGE, "%s called SetAutoPilot to %s", GetName(), (set ? "true" : "false"));
 }
@@ -886,6 +889,9 @@ void Client::SetBallPark() {
     }
     if (!m_setStateSent and m_beyonce) {  // MUST have beyonce before sending state data.
         pShipSE->DestinyMgr()->SendSetState();
+        // 2026-09-14 15:25 -04:00 | theocheesecake: Log autopilot after arrival state is sent, before jump state is cleared.
+        sLog.Warning("APDebug", "%s: arrival state sent, AP=%d, gateJump=%d",
+            GetName(), static_cast<int>(IsAutoPilot()), static_cast<int>(IsGateJump()));
         m_ballparkTimer.Disable();
         if (IsGateJump()) {
             SetInvulTimer(Player::Timer::JumpInvul);

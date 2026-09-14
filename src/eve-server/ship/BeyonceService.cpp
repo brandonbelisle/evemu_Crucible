@@ -624,6 +624,10 @@ PyResult BeyonceBound::CmdWarpToStuffAutopilot(PyCallArgs &call, PyInt* destID) 
 }
 
 PyResult BeyonceBound::CmdStop(PyCallArgs &call) {
+    // 2026-09-14 15:25 -04:00 | theocheesecake: Trace incoming stop requests before any early return.
+    sLog.Warning("APDebug", "%s: received CmdStop, AP=%d, jumping=%d",
+        call.client->GetName(), static_cast<int>(call.client->IsAutoPilot()),
+        static_cast<int>(call.client->IsJump()));
     _log(AUTOPILOT__MESSAGE, "%s called Stop. AP: %s, Invul: %s", call.client->GetName(), \
             (call.client->IsAutoPilot() ? "true" : "false"), call.client->IsInvul()?"true":"false");
 
@@ -632,8 +636,8 @@ PyResult BeyonceBound::CmdStop(PyCallArgs &call) {
         codelog(CLIENT__ERROR, "%s: Client has no destiny manager!", call.client->GetName());
         return PyStatic.NewNone();
     }
-    // Check if AutoPilot is on or not to decide stop.
-    if (!pDestiny->IsMoving() && !call.client->IsAutoPilot())
+    // 2026-09-14 15:25 -04:00 | theocheesecake: Restore stationary-stop guard while investigating arrival-time cancellation.
+    if (!pDestiny->IsMoving())
         return PyStatic.NewNone();
     if (pDestiny->IsWarping()) {
         call.client->SendNotifyMsg( "You can't do this while warping");
