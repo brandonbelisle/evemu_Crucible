@@ -2248,7 +2248,16 @@ void Client::QueueDestinyUpdate(PyTuple **update, bool DoPackage /*false*/, bool
         PyTuple* t = dum.Encode();
         if (is_log_enabled(CLIENT__QUEUE_DUMP))
             t->Dump(CLIENT__QUEUE_DUMP, "");
-        SendNotification("DoDestinyUpdate", "clientID", &t, false);
+        // 2026-09-14 21:39 -0400 | theocheesecake: Controlled test: give the gate-arrival
+        // snapshot a notification sequence number, like queued movement updates.
+        // This tests client notification handling; it is not a load-complete
+        // acknowledgement and does not change the server autopilot flag.
+        const bool sequenceGateSnapshot = IsSetState && IsGateJump();
+        SendNotification("DoDestinyUpdate", "clientID", &t, sequenceGateSnapshot);
+        if (sequenceGateSnapshot)
+            sLog.Warning("NavDebug", "%s: GATE SetState sequenced sn=%u system=%u pending=%u",
+                GetName(), static_cast<unsigned int>(m_nextNotifySequence), GetSystemID(),
+                static_cast<unsigned int>(m_destinyUpdateQueue->size()));
         PyDecRef(t);
     } else {
         act.update = *update;
