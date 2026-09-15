@@ -1799,6 +1799,9 @@ void DestinyManager::WarpUpdate(double currentShipSpeed) {
 }
 
 void DestinyManager::WarpStop(double currentShipSpeed) {
+    // 2026-09-14 21:21 -0400 | theocheesecake: Capture login return before SetLoginWarpComplete clears it.
+    const bool completedLoginWarp = mySE->HasPilot() && mySE->GetPilot()->IsLoginWarping();
+
     // 2026-09-14 20:45 -0400 | theocheesecake: Restore the pre-coasting warp-exit behavior
     // while investigating the automatic gate activation and docking regression.
     if (is_log_enabled(DESTINY__WARP_TRACE)) {
@@ -1829,6 +1832,20 @@ void DestinyManager::WarpStop(double currentShipSpeed) {
     // forward while decelerating - meaning that the client and server are
     // briefly out of sync because the server thinks the ship is halted.
     Halt();
+
+    // 2026-09-14 21:21 -0400 | theocheesecake: Test a fresh system snapshot after login return,
+    // when movement is stopped and the ship is in its destination bubble.
+    // Defer through the existing ballpark timer instead of sending SetState
+    // immediately ahead of this tick's queued warp-position updates.
+    // Ordinary warps and stargate arrivals do not schedule this refresh.
+    if (completedLoginWarp) {
+        Client* pilot = mySE->GetPilot();
+        pilot->SetStateSent(false);
+        pilot->SetBallParkTimer(0);
+        pilot->SetBallParkTimer(Player::Timer::Default);
+        sLog.Warning("NavDebug", "%s: LOGIN arrival snapshot scheduled system=%u mode=%u",
+            pilot->GetName(), pilot->GetSystemID(), static_cast<unsigned int>(m_ballMode));
+    }
 }
 
 //called whenever an entity is going away and can no longer be used as a target
