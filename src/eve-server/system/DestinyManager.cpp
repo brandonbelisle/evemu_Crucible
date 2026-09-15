@@ -447,6 +447,10 @@ void DestinyManager::UpdateVelocity(bool isMoving) {
             mySE->GetName(), mySE->GetID(), m_userSpeedFraction, m_activeSpeedFraction, m_timeFraction, m_prevSpeedFraction, m_prevSpeed, m_maxSpeed, \
                  m_accel ? "true" : "false", m_decel ? "true": "false", delta);
     } else if (m_activeSpeedFraction) {
+        // 2026-09-14 20:34 -0400 | theocheesecake: Preserve the starting fraction even below the 0.01
+        // moving threshold in SetSpeedFraction(), which clears this field.
+        // MoveObject needs a nonzero starting fraction to finish slowing down.
+        m_prevSpeedFraction = m_activeSpeedFraction;
         //  commanded to stop while ship is moving.  begin decelerating
         logType = 5;
         m_accel = false;
@@ -1937,8 +1941,10 @@ void DestinyManager::BeginMovement() {
     if (IsCloaked())
         UnCloak();
 
-    // if ship is not moving, set initial movement variables
-    if ((m_userSpeedFraction < 0.02f) and (m_timeFraction < 0.02f)) {
+    // 2026-09-14 20:34 -0400 | theocheesecake: A new movement command must restart a zero-speed order,
+    // even during post-warp coasting. m_timeFraction tracks interpolation
+    // progress, not actual speed; using it here can leave approach at zero.
+    if (m_userSpeedFraction < 0.02f) {
         SetSpeedFraction(1.0f, true);
     } else {
         SetSpeedFraction(m_userSpeedFraction, true);
