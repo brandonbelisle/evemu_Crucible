@@ -903,6 +903,8 @@ void Client::SetBallPark() {
         if (IsGateJump()) {
             SetInvulTimer(Player::Timer::JumpInvul);
             // dont use timer method here...(jumping ship will flash at destination)
+            // 2026-09-14 20:16 -0400 | theocheesecake: Start a fresh interval; Timer::Start preserves an enabled timer's start time.
+            m_cloakTimer.Disable();
             m_cloakTimer.Start(Player::Timer::JumpCloak);
             m_clientState = Player::State::Idle;
         }
@@ -1521,6 +1523,10 @@ void Client::ExecuteJump() {
 
     //OnScannerInfoRemoved  - no args.  flushes current scan data in client
     SendNotification("OnScannerInfoRemoved", "charid", new PyTuple(0), true);  // this is sequenced
+    // 2026-09-14 20:16 -0400 | theocheesecake: Discard the previous jump-cloak timer before cloaking for a new jump.
+    // An expired timer can otherwise uncloak the ship before its arrival SetState.
+    // SetBallPark() starts the new protection interval after sending that snapshot.
+    m_cloakTimer.Disable();
     pShipSE->Jump();
 
     MoveToLocation(m_moveSystemID, m_movePoint);
