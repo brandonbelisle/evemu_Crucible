@@ -515,6 +515,12 @@ void DestinyManager::Stop() {
         return;
     }
 
+    // 2026-09-14 21:06 -0400 | theocheesecake: Identify server-originated stops separately from incoming CmdStop.
+    if (mySE->HasPilot())
+        sLog.Warning("NavDebug", "%s: SERVER Stop mode=%u target=%u AP=%d",
+            mySE->GetName(), static_cast<unsigned int>(m_ballMode), m_targetEntity.first,
+            static_cast<int>(mySE->GetPilot()->IsAutoPilot()));
+
     // AP not implemented yet in this version  -allan 4Mar15
     // Clear autopilot
     if (mySE->HasPilot()) {
@@ -1100,6 +1106,16 @@ void DestinyManager::Follow() {
     const GPoint& target_point = m_targetEntity.second->GetPosition();
     GVector heading(m_position, target_point);
     m_targetDistance = (uint32)(heading.length() - m_radius);
+    // 2026-09-14 21:06 -0400 | theocheesecake: Sample approach progress every five ticks, including the AP early-return branch.
+    if (mySE->HasPilot() && (sEntityList.GetStamp() % 5 == 0)) {
+        sLog.Warning("NavDebug", "%s: FOLLOW target=%u center=%.2f surface=%.2f followRange=%u AP=%d apHold=%d speed=%.4f USF=%.4f ASF=%.4f PSF=%.4f accel=%d decel=%d",
+            mySE->GetName(), m_targetEntity.first, heading.length(),
+            heading.length() - mySE->GetRadius() - m_targetEntity.second->GetRadius(),
+            m_followDistance, static_cast<int>(mySE->GetPilot()->IsAutoPilot()),
+            static_cast<int>(mySE->GetPilot()->IsAutoPilot() && m_targetDistance < m_followDistance),
+            m_velocity.length(), m_userSpeedFraction, m_activeSpeedFraction, m_prevSpeedFraction,
+            static_cast<int>(m_accel), static_cast<int>(m_decel));
+    }
 
     if (m_targetDistance < m_followDistance) {
         if (mySE->HasPilot())
@@ -2393,6 +2409,10 @@ PyResult DestinyManager::AttemptDockOperation() {
     double rangeToStationPerimiter = m_position.distance(stationPos);
     rangeToStationPerimiter -= mySE->GetRadius();
     rangeToStationPerimiter -= station->GetRadius();
+
+    // 2026-09-14 21:06 -0400 | theocheesecake: Record the actual server-side docking range after command guards pass.
+    sLog.Warning("NavDebug", "%s: DOCK range station=%u surface=%.2f",
+        pClient->GetName(), stationID, rangeToStationPerimiter);
 
     // Verify range to station is within docking perimeter of 2500 meters:
     _log(DESTINY__TRACE, "Destiny::AttemptDockOperation() rangeToStationPerimiter is %.2fm", rangeToStationPerimiter);

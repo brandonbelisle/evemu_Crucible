@@ -505,6 +505,10 @@ void Client::ProcessClient() {
                 case Player::State::LoginWarp: {
                     _log(CLIENT__TIMER, "ProcessClient()::CheckState():  case: LoginWarp");
                     pShipSE->DestinyMgr()->UnCloak();
+                    // 2026-09-14 21:06 -0400 | theocheesecake: Compare login-warp initialization with the working undock path.
+                    sLog.Warning("NavDebug", "%s: LOGIN warp start state=%s snapshot=%d binding=%d",
+                        GetName(), GetStateName(m_clientState).c_str(),
+                        static_cast<int>(m_setStateSent), static_cast<int>(m_beyonce));
                     pShipSE->DestinyMgr()->WarpTo(m_loginWarpPoint);
                     } break;
                 case Player::State::Jump: {
@@ -983,6 +987,9 @@ void Client::DockToStation() {
 }
 
 void Client::UndockFromStation() {
+    // 2026-09-14 21:06 -0400 | theocheesecake: Identify the comparison run that bypasses login warp.
+    sLog.Warning("NavDebug", "%s: UNDOCK start state=%s loginWarp=%d",
+        GetName(), GetStateName(m_clientState).c_str(), static_cast<int>(IsLoginWarping()));
     if (m_TS != nullptr) {
         this->services().Lookup <TradeService>("trademgr")->CancelTrade(this);
     }
@@ -1420,6 +1427,10 @@ PyRep *Client::GetAggressors() const {
 }
 
 void Client::StargateJump(uint32 fromGate, uint32 toGate) {
+    // 2026-09-14 21:06 -0400 | theocheesecake: Expose pending movement that can reject a jump after the RPC guards pass.
+    sLog.Warning("NavDebug", "%s: JUMP dispatch from=%u to=%u state=%s timer=%d remainingMs=%u",
+        GetName(), fromGate, toGate, GetStateName(m_clientState).c_str(),
+        static_cast<int>(m_stateTimer.Enabled()), static_cast<unsigned int>(m_stateTimer.GetRemainingTime()));
     if ((m_clientState != Player::State::Idle) or m_stateTimer.Enabled()) {
         sLog.Error("Client","%s: StargateJump called when a move is already pending. Ignoring.", m_char->name());
         /** @todo  send error to client here */
@@ -1461,6 +1472,7 @@ void Client::StargateJump(uint32 fromGate, uint32 toGate) {
 */
     //delay the move 4sec so they can see the JumpOut animation
     SetStateTimer(Player::State::Jump, Player::Timer::Jumping);
+    sLog.Warning("NavDebug", "%s: JUMP scheduled destinationSystem=%u", GetName(), m_moveSystemID);
 }
 
 void Client::CynoJump(InventoryItemRef beacon) {
@@ -2969,6 +2981,11 @@ bool Client::IsLoginWarping() {
 //
 // It is safe to repeatedly call this function without consequence.
 void Client::SetLoginWarpComplete() {
+    // 2026-09-14 21:06 -0400 | theocheesecake: Log only the login transition, not every later warp completion.
+    if (IsLoginWarping())
+        sLog.Warning("NavDebug", "%s: LOGIN warp complete state=%s timer=%d snapshot=%d binding=%d",
+            GetName(), GetStateName(m_clientState).c_str(), static_cast<int>(m_stateTimer.Enabled()),
+            static_cast<int>(m_setStateSent), static_cast<int>(m_beyonce));
     if (m_clientState == Player::State::LoginWarp) {
         m_clientState = Player::State::Idle;
     }
